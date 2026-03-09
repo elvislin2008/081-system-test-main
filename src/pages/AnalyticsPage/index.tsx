@@ -173,7 +173,7 @@ export default function AnalyticsPage() {
         rangeLabel: range.label,
       });
 
-      XLSX.writeFile(wb, `analytics-${range.fileToken}.xlsx`);
+      XLSX.writeFileXLSX(wb, `analytics-${range.fileToken}.xlsx`);
       toast.success('Excel 已匯出');
     } catch (error) {
       console.error('Export error:', error);

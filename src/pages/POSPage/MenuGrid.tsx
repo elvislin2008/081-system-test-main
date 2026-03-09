@@ -39,7 +39,7 @@ export default function MenuGrid({ categories, onProductClick }: MenuGridProps) 
   );
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden">
+    <div className="flex-1 flex flex-col min-w-0">
       <div className="px-4 pt-4 pb-2">
         <div className="relative">
           <IconSearch className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
@@ -53,10 +53,10 @@ export default function MenuGrid({ categories, onProductClick }: MenuGridProps) 
         </div>
       </div>
 
-      <div className="px-4 pb-2 flex gap-2 overflow-x-auto flex-shrink-0 scrollbar-hide">
+      <div className="px-4 pb-2 flex gap-2 overflow-x-auto overflow-y-hidden flex-nowrap scrollbar-hide w-full" style={{ WebkitOverflowScrolling: 'touch' }}>
         <button
           onClick={() => setActiveCategoryId(null)}
-          className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${
+          className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${
             activeCategoryId === null
               ? 'bg-blue-600 text-white shadow-md dark:bg-blue-500'
               : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700 dark:hover:bg-slate-700'
@@ -69,7 +69,7 @@ export default function MenuGrid({ categories, onProductClick }: MenuGridProps) 
           <button
             key={category.id}
             onClick={() => setActiveCategoryId(category.id!)}
-            className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all flex items-center gap-1.5 ${
+            className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all flex items-center gap-1.5 ${
               activeCategoryId === category.id
                 ? 'bg-blue-600 text-white shadow-md dark:bg-blue-500'
                 : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700 dark:hover:bg-slate-700'

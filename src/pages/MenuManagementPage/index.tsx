@@ -79,6 +79,36 @@ export default function MenuManagementPage() {
     const now = new Date().toISOString();
     const { recipeItems, ...productData } = data;
 
+    // Fix duplicate sortOrder
+    const targetOrder = productData.sortOrder || ((products?.length || 0) + 1);
+    const existingProductsList = products?.filter((p) => p.isActive) || [];
+    
+    // Check if another active product already has the target sortOrder
+    const hasConflict = existingProductsList.some(p => p.sortOrder === targetOrder && p.id !== editProduct?.id);
+
+    if (hasConflict) {
+      const sortedProducts = [...existingProductsList].sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
+      const updates: Product[] = [];
+      let currentOrderSpace = targetOrder + 1;
+
+      for (const p of sortedProducts) {
+        if (p.id === editProduct?.id) continue;
+        if ((p.sortOrder || 0) >= targetOrder) {
+          if ((p.sortOrder || 0) < currentOrderSpace) {
+            updates.push({ ...p, sortOrder: currentOrderSpace, updatedAt: now });
+            currentOrderSpace++;
+          } else {
+             currentOrderSpace = (p.sortOrder || 0) + 1;
+          }
+        }
+      }
+      if (updates.length > 0) {
+        await db.products.bulkPut(updates);
+      }
+    }
+
+    productData.sortOrder = targetOrder;
+
     if (editProduct?.id) {
       await db.products.update(editProduct.id, { ...productData, updatedAt: now });
       await replaceProductRecipe(editProduct.id, productData.trackInventory && !productData.isCombo ? recipeItems : []);
@@ -89,7 +119,6 @@ export default function MenuManagementPage() {
         createdAt: now,
         updatedAt: now,
         isActive: true,
-        sortOrder: (products?.length || 0) + 1,
       } as Product);
       await replaceProductRecipe(productId as number, productData.trackInventory && !productData.isCombo ? recipeItems : []);
       toast.success('商品已新增');
@@ -101,6 +130,35 @@ export default function MenuManagementPage() {
 
   const handleSaveCategory = async (data: Partial<Category>) => {
     const now = new Date().toISOString();
+
+    const targetOrder = data.sortOrder || ((categories?.length || 0) + 1);
+    const existingCategoryList = categories?.filter((c) => c.isActive) || [];
+
+    const hasConflict = existingCategoryList.some(c => c.sortOrder === targetOrder && c.id !== editCategory?.id);
+
+    if (hasConflict) {
+      const sortedCategories = [...existingCategoryList].sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
+      const updates: Category[] = [];
+      let currentOrderSpace = targetOrder + 1;
+
+      for (const c of sortedCategories) {
+         if (c.id === editCategory?.id) continue;
+         if ((c.sortOrder || 0) >= targetOrder) {
+           if ((c.sortOrder || 0) < currentOrderSpace) {
+             updates.push({ ...c, sortOrder: currentOrderSpace, updatedAt: now });
+             currentOrderSpace++;
+           } else {
+             currentOrderSpace = (c.sortOrder || 0) + 1;
+           }
+         }
+      }
+      if (updates.length > 0) {
+        await db.categories.bulkPut(updates);
+      }
+    }
+
+    data.sortOrder = targetOrder;
+
     if (editCategory?.id) {
       await db.categories.update(editCategory.id, { ...data, updatedAt: now });
       toast.success('分類已更新');
@@ -110,7 +168,6 @@ export default function MenuManagementPage() {
         createdAt: now,
         updatedAt: now,
         isActive: true,
-        sortOrder: (categories?.length || 0) + 1,
       } as Category);
       toast.success('分類已新增');
     }
@@ -137,6 +194,28 @@ export default function MenuManagementPage() {
   const initialRecipe = editProduct?.id
     ? (productRecipes?.filter((recipe) => recipe.productId === editProduct.id) ?? [])
     : [];
+
+  const handleMove = async (type: 'product' | 'category', index: number, direction: 'up' | 'down', items: any[]) => {
+    const swapIndex = direction === 'up' ? index - 1 : index + 1;
+    if (swapIndex < 0 || swapIndex >= items.length) return;
+
+    const current = { ...items[index] };
+    const swapTarget = { ...items[swapIndex] };
+
+    let tempOrder = swapTarget.sortOrder;
+    if (current.sortOrder === swapTarget.sortOrder) {
+      tempOrder = current.sortOrder + (direction === 'up' ? -1 : 1);
+    }
+    
+    swapTarget.sortOrder = current.sortOrder;
+    current.sortOrder = tempOrder;
+
+    if (type === 'product') {
+      await db.products.bulkPut([current, swapTarget]);
+    } else {
+      await db.categories.bulkPut([current, swapTarget]);
+    }
+  };
 
   return (
     <div className="h-full flex flex-col">
@@ -225,7 +304,7 @@ export default function MenuManagementPage() {
       <div className="flex-1 overflow-auto p-4">
         {activeTab === 'products' ? (
           <div className="space-y-2">
-            {products?.filter((product) => product.isActive && !product.isCombo).map((product, index) => {
+            {products?.filter((product) => product.isActive && !product.isCombo).map((product, index, arr) => {
               const categoryIcon = categories?.find((category) => category.id === product.categoryId)?.icon || 'restaurant';
               const recipeCount = recipeCountByProductId.get(product.id!) ?? 0;
               return (
@@ -252,6 +331,10 @@ export default function MenuManagementPage() {
 
                   <div className="flex items-center gap-3">
                     <span className="font-bold text-blue-600 dark:text-blue-400 text-lg">{formatPrice(product.price)}</span>
+                    <div className="flex flex-col gap-1 mr-2 border-r border-slate-200 dark:border-slate-700 pr-3">
+                      <button onClick={() => handleMove('product', index, 'up', arr)} disabled={index === 0} className="text-slate-400 hover:text-blue-500 disabled:opacity-30 px-1 leading-none">▲</button>
+                      <button onClick={() => handleMove('product', index, 'down', arr)} disabled={index === arr.length - 1} className="text-slate-400 hover:text-blue-500 disabled:opacity-30 px-1 leading-none">▼</button>
+                    </div>
                     <button onClick={() => { setEditProduct(product); setShowProductForm(true); }} className="btn-secondary text-sm px-3 py-1.5">編輯</button>
                     <button onClick={() => setDeleteTarget({ type: 'product', id: product.id!, name: product.name })} className="text-red-400 hover:text-red-600 dark:hover:text-red-400 text-sm transition-colors">停用</button>
                   </div>
@@ -261,7 +344,7 @@ export default function MenuManagementPage() {
           </div>
         ) : activeTab === 'combos' ? (
           <div className="space-y-2">
-            {products?.filter((product) => product.isActive && product.isCombo).map((product, index) => {
+            {products?.filter((product) => product.isActive && product.isCombo).map((product, index, arr) => {
               const categoryIcon = categories?.find((category) => category.id === product.categoryId)?.icon || 'restaurant';
               return (
                 <div key={product.id} className={`card px-4 py-3 flex items-center justify-between animate-slide-up border-l-4 border-purple-500 stagger-${Math.min(index + 1, 6)}`}>
@@ -284,6 +367,10 @@ export default function MenuManagementPage() {
 
                   <div className="flex items-center gap-3">
                     <span className="font-bold text-purple-600 dark:text-purple-400 text-lg">{formatPrice(product.price)}</span>
+                    <div className="flex flex-col gap-1 mr-2 border-r border-slate-200 dark:border-slate-700 pr-3">
+                      <button onClick={() => handleMove('product', index, 'up', arr)} disabled={index === 0} className="text-slate-400 hover:text-purple-500 disabled:opacity-30 px-1 leading-none">▲</button>
+                      <button onClick={() => handleMove('product', index, 'down', arr)} disabled={index === arr.length - 1} className="text-slate-400 hover:text-purple-500 disabled:opacity-30 px-1 leading-none">▼</button>
+                    </div>
                     <button onClick={() => { setEditProduct(product); setShowProductForm(true); }} className="btn-secondary text-sm px-3 py-1.5">編輯價格</button>
                     <button onClick={() => setDeleteTarget({ type: 'product', id: product.id!, name: product.name })} className="text-red-400 hover:text-red-600 dark:hover:text-red-400 text-sm transition-colors">停用</button>
                   </div>
@@ -307,7 +394,7 @@ export default function MenuManagementPage() {
           </div>
         ) : activeTab === 'categories' ? (
           <div className="space-y-2">
-            {categories?.filter((category) => category.isActive).map((category, index) => (
+            {categories?.filter((category) => category.isActive).map((category, index, arr) => (
               <div key={category.id} className={`card px-4 py-3 flex items-center justify-between animate-slide-up stagger-${Math.min(index + 1, 6)}`}>
                 <div className="flex items-center gap-4">
                   <div className="text-slate-600 dark:text-slate-400">
@@ -320,7 +407,11 @@ export default function MenuManagementPage() {
                 </div>
 
                 <div className="flex items-center gap-3">
-                  <span className="text-sm text-slate-400 dark:text-slate-500">排序 {category.sortOrder}</span>
+                  <span className="text-sm text-slate-400 dark:text-slate-500 mr-2">排序 {category.sortOrder}</span>
+                  <div className="flex flex-col gap-1 mr-2 border-r border-slate-200 dark:border-slate-700 pr-3">
+                    <button onClick={() => handleMove('category', index, 'up', arr)} disabled={index === 0} className="text-slate-400 hover:text-blue-500 disabled:opacity-30 px-1 leading-none">▲</button>
+                    <button onClick={() => handleMove('category', index, 'down', arr)} disabled={index === arr.length - 1} className="text-slate-400 hover:text-blue-500 disabled:opacity-30 px-1 leading-none">▼</button>
+                  </div>
                   <button onClick={() => { setEditCategory(category); setShowCategoryForm(true); }} className="btn-secondary text-sm px-3 py-1.5">編輯</button>
                   <button onClick={() => setDeleteTarget({ type: 'category', id: category.id!, name: category.name })} className="text-red-400 hover:text-red-600 dark:hover:text-red-400 text-sm transition-colors">停用</button>
                 </div>
@@ -393,6 +484,7 @@ function ProductFormModal({
   const [description, setDescription] = useState(product?.description || '');
   const [price, setPrice] = useState(product?.price?.toString() || '');
   const [categoryId, setCategoryId] = useState(product?.categoryId || categories[0]?.id || 0);
+  const [sortOrder, setSortOrder] = useState(product?.sortOrder?.toString() || '0');
   const [trackInventory, setTrackInventory] = useState(product?.trackInventory ?? true);
   const [selectedModGroups, setSelectedModGroups] = useState<number[]>(product?.modifierGroupIds || []);
   const [imageUrl, setImageUrl] = useState(product?.imageUrl || '');
@@ -499,6 +591,7 @@ function ProductFormModal({
       modifierGroupIds: selectedModGroups,
       imageUrl,
       isCombo,
+      sortOrder: Number.parseInt(sortOrder, 10) || 0,
       comboItems: isCombo ? comboItems : undefined,
       recipeItems: isCombo || !trackInventory ? [] : recipeItems,
     });
@@ -512,9 +605,15 @@ function ProductFormModal({
             <label className="text-sm font-medium text-slate-700 dark:text-slate-300 block mb-1">商品名稱 *</label>
             <input value={name} onChange={(event) => setName(event.target.value)} className="input-field" placeholder="例如：滷肉飯" />
           </div>
-          <div>
-            <label className="text-sm font-medium text-slate-700 dark:text-slate-300 block mb-1">{`價格 (${currency}) *`}</label>
-            <input type="number" value={price} onChange={(event) => setPrice(event.target.value)} className="input-field" min={0} />
+          <div className="flex gap-2">
+            <div className="flex-1">
+              <label className="text-sm font-medium text-slate-700 dark:text-slate-300 block mb-1">{`價格 (${currency}) *`}</label>
+              <input type="number" value={price} onChange={(event) => setPrice(event.target.value)} className="input-field" min={0} />
+            </div>
+            <div className="w-24">
+              <label className="text-sm font-medium text-slate-700 dark:text-slate-300 block mb-1">排序</label>
+              <input type="number" value={sortOrder} onChange={(event) => setSortOrder(event.target.value)} className="input-field" />
+            </div>
           </div>
         </div>
 
@@ -694,15 +793,22 @@ function CategoryFormModal({
 }) {
   const [name, setName] = useState(category?.name || '');
   const [description, setDescription] = useState(category?.description || '');
+  const [sortOrder, setSortOrder] = useState(category?.sortOrder?.toString() || '0');
   const [icon, setIcon] = useState(category?.icon || 'rice');
   const [color, setColor] = useState(category?.color || '#3b82f6');
 
   return (
     <Modal open={true} onClose={onClose} title={category ? '編輯分類' : '新增分類'} size="sm">
       <div className="space-y-4">
-        <div>
-          <label className="text-sm font-medium text-slate-700 dark:text-slate-300 block mb-1">分類名稱 *</label>
-          <input value={name} onChange={(event) => setName(event.target.value)} className="input-field" placeholder="例如：主餐" />
+        <div className="flex gap-2">
+          <div className="flex-1">
+            <label className="text-sm font-medium text-slate-700 dark:text-slate-300 block mb-1">分類名稱 *</label>
+            <input value={name} onChange={(event) => setName(event.target.value)} className="input-field" placeholder="例如：主餐" />
+          </div>
+          <div className="w-24">
+            <label className="text-sm font-medium text-slate-700 dark:text-slate-300 block mb-1">排序</label>
+            <input type="number" value={sortOrder} onChange={(event) => setSortOrder(event.target.value)} className="input-field" />
+          </div>
         </div>
         <div>
           <label className="text-sm font-medium text-slate-700 dark:text-slate-300 block mb-1">描述</label>
@@ -728,7 +834,7 @@ function CategoryFormModal({
         </div>
         <div className="flex gap-2 pt-2">
           <button onClick={onClose} className="btn-secondary flex-1">取消</button>
-          <button onClick={() => name && onSave({ name, description, icon, color })} disabled={!name} className="btn-primary flex-1">
+          <button onClick={() => name && onSave({ name, description, icon, color, sortOrder: Number.parseInt(sortOrder, 10) || 0 })} disabled={!name} className="btn-primary flex-1">
             {category ? '儲存分類' : '新增分類'}
           </button>
         </div>

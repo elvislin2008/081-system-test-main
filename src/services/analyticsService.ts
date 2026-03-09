@@ -336,6 +336,7 @@ export function buildAnalyticsWorkbook({
     ['毛利率', data.totalRevenue > 0 ? `${(((data.totalRevenue - data.totalCost) / data.totalRevenue) * 100).toFixed(1)}%` : '0%'],
   ];
   const wsSummary = XLSX.utils.aoa_to_sheet(summaryData);
+  wsSummary['!cols'] = [{ wch: 16 }, { wch: 30 }];
   XLSX.utils.book_append_sheet(wb, wsSummary, '摘要');
 
   // 2. Time Slot Analysis Sheet
@@ -350,6 +351,7 @@ export function buildAnalyticsWorkbook({
     ]),
   ];
   const wsTimeSlot = XLSX.utils.aoa_to_sheet(timeSlotData);
+  wsTimeSlot['!cols'] = [{ wch: 10 }, { wch: 14 }, { wch: 10 }, { wch: 12 }, { wch: 12 }];
   XLSX.utils.book_append_sheet(wb, wsTimeSlot, '時段分析');
 
   // 3. Daily Revenue Sheet
@@ -358,6 +360,7 @@ export function buildAnalyticsWorkbook({
     ...data.revenueByDay.map((entry) => [entry.date, entry.orders, entry.revenue]),
   ];
   const wsDaily = XLSX.utils.aoa_to_sheet(dailyData);
+  wsDaily['!cols'] = [{ wch: 10 }, { wch: 10 }, { wch: 12 }];
   XLSX.utils.book_append_sheet(wb, wsDaily, '每日營收');
 
   // 4. Hourly Breakdown Sheet
@@ -366,6 +369,7 @@ export function buildAnalyticsWorkbook({
     ...data.hourlyBreakdown.map((entry) => [`${entry.hour}:00`, entry.orders, entry.revenue]),
   ];
   const wsHourly = XLSX.utils.aoa_to_sheet(hourlyData);
+  wsHourly['!cols'] = [{ wch: 10 }, { wch: 10 }, { wch: 12 }];
   XLSX.utils.book_append_sheet(wb, wsHourly, '每小時分析');
 
   // 5. Top Items Sheet
@@ -374,6 +378,7 @@ export function buildAnalyticsWorkbook({
     ...data.topItems.map((item) => [item.name, item.quantity, item.revenue]),
   ];
   const wsTopItems = XLSX.utils.aoa_to_sheet(topItemsData);
+  wsTopItems['!cols'] = [{ wch: 20 }, { wch: 10 }, { wch: 12 }];
   XLSX.utils.book_append_sheet(wb, wsTopItems, '熱銷商品');
 
   return wb;

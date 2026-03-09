@@ -1,6 +1,7 @@
 import { toLocalISOString } from '../utils/date';
 import { db } from './database';
 import { seedIngredientData } from './seedBom';
+import { generatedCategories, generatedProducts } from './menuData';
 
 export async function seedDatabase() {
   const now = toLocalISOString(new Date());
@@ -51,13 +52,12 @@ export async function seedDatabase() {
   ]);
 
   // ==================== 分類 ====================
-  await db.categories.bulkAdd([
-    { name: '主餐', description: '飯類主餐', sortOrder: 1, isActive: true, icon: 'rice', color: '#ef4444', createdAt: now, updatedAt: now },
-    { name: '麵類', description: '各式麵食', sortOrder: 2, isActive: true, icon: 'noodle', color: '#f97316', createdAt: now, updatedAt: now },
-    { name: '小菜', description: '開胃小菜', sortOrder: 3, isActive: true, icon: 'salad', color: '#22c55e', createdAt: now, updatedAt: now },
-    { name: '飲料', description: '冷熱飲品', sortOrder: 4, isActive: true, icon: 'cup', color: '#3b82f6', createdAt: now, updatedAt: now },
-    { name: '甜點', description: '餐後甜點', sortOrder: 5, isActive: true, icon: 'cake', color: '#a855f7', createdAt: now, updatedAt: now },
-  ]);
+  const mappedCategories = generatedCategories.map(c => ({
+    ...c,
+    createdAt: now,
+    updatedAt: now
+  }));
+  await db.categories.bulkAdd(mappedCategories as any);
 
   // ==================== 修改群組 ====================
   await db.modifierGroups.bulkAdd([
@@ -98,35 +98,12 @@ export async function seedDatabase() {
   ]);
 
   // ==================== 商品 ====================
-  await db.products.bulkAdd([
-    // 主餐 (categoryId: 1)
-    { categoryId: 1, name: '滷肉飯', description: '古早味滷肉飯', price: 85, imageUrl: '', isActive: true, modifierGroupIds: [1, 2, 5], trackInventory: true, sortOrder: 1, createdAt: now, updatedAt: now },
-    { categoryId: 1, name: '雞腿飯', description: '香煎雞腿便當', price: 130, imageUrl: '', isActive: true, modifierGroupIds: [1, 2, 5], trackInventory: true, sortOrder: 2, createdAt: now, updatedAt: now },
-    { categoryId: 1, name: '排骨飯', description: '炸排骨便當', price: 120, imageUrl: '', isActive: true, modifierGroupIds: [1, 2, 5], trackInventory: true, sortOrder: 3, createdAt: now, updatedAt: now },
-    { categoryId: 1, name: '控肉飯', description: '東坡控肉飯', price: 110, imageUrl: '', isActive: true, modifierGroupIds: [1, 2, 5], trackInventory: true, sortOrder: 4, createdAt: now, updatedAt: now },
-    { categoryId: 1, name: '魚排飯', description: '酥炸魚排便當', price: 115, imageUrl: '', isActive: true, modifierGroupIds: [1, 2, 5], trackInventory: true, sortOrder: 5, createdAt: now, updatedAt: now },
-    // 麵類 (categoryId: 2)
-    { categoryId: 2, name: '牛肉麵', description: '紅燒牛肉麵', price: 160, imageUrl: '', isActive: true, modifierGroupIds: [1, 2, 5], trackInventory: true, sortOrder: 1, createdAt: now, updatedAt: now },
-    { categoryId: 2, name: '陽春麵', description: '清湯陽春麵', price: 60, imageUrl: '', isActive: true, modifierGroupIds: [1, 2, 5], trackInventory: true, sortOrder: 2, createdAt: now, updatedAt: now },
-    { categoryId: 2, name: '炸醬麵', description: '古早味炸醬麵', price: 90, imageUrl: '', isActive: true, modifierGroupIds: [1, 2, 5], trackInventory: true, sortOrder: 3, createdAt: now, updatedAt: now },
-    { categoryId: 2, name: '乾拌麵', description: '蔥油乾拌麵', price: 75, imageUrl: '', isActive: true, modifierGroupIds: [1, 2, 5], trackInventory: true, sortOrder: 4, createdAt: now, updatedAt: now },
-    // 小菜 (categoryId: 3)
-    { categoryId: 3, name: '燙青菜', description: '每日時蔬', price: 40, imageUrl: '', isActive: true, modifierGroupIds: [1], trackInventory: true, sortOrder: 1, createdAt: now, updatedAt: now },
-    { categoryId: 3, name: '滷蛋', description: '入味滷蛋', price: 15, imageUrl: '', isActive: true, modifierGroupIds: [], trackInventory: true, sortOrder: 2, createdAt: now, updatedAt: now },
-    { categoryId: 3, name: '豆干', description: '滷豆干', price: 30, imageUrl: '', isActive: true, modifierGroupIds: [1], trackInventory: true, sortOrder: 3, createdAt: now, updatedAt: now },
-    { categoryId: 3, name: '海帶', description: '涼拌海帶', price: 30, imageUrl: '', isActive: true, modifierGroupIds: [], trackInventory: true, sortOrder: 4, createdAt: now, updatedAt: now },
-    { categoryId: 3, name: '水餃', description: '手工水餃(10顆)', price: 80, imageUrl: '', isActive: true, modifierGroupIds: [1, 5], trackInventory: true, sortOrder: 5, createdAt: now, updatedAt: now },
-    // 飲料 (categoryId: 4)
-    { categoryId: 4, name: '珍珠奶茶', description: '招牌珍珠奶茶', price: 60, imageUrl: '', isActive: true, modifierGroupIds: [3, 4], trackInventory: true, sortOrder: 1, createdAt: now, updatedAt: now },
-    { categoryId: 4, name: '紅茶', description: '古早味紅茶', price: 30, imageUrl: '', isActive: true, modifierGroupIds: [3, 4], trackInventory: true, sortOrder: 2, createdAt: now, updatedAt: now },
-    { categoryId: 4, name: '綠茶', description: '茉莉綠茶', price: 30, imageUrl: '', isActive: true, modifierGroupIds: [3, 4], trackInventory: true, sortOrder: 3, createdAt: now, updatedAt: now },
-    { categoryId: 4, name: '冬瓜茶', description: '手工冬瓜茶', price: 35, imageUrl: '', isActive: true, modifierGroupIds: [3, 4], trackInventory: true, sortOrder: 4, createdAt: now, updatedAt: now },
-    { categoryId: 4, name: '味噌湯', description: '日式味噌湯', price: 35, imageUrl: '', isActive: true, modifierGroupIds: [3], trackInventory: true, sortOrder: 5, createdAt: now, updatedAt: now },
-    // 甜點 (categoryId: 5)
-    { categoryId: 5, name: '豆花', description: '傳統豆花', price: 45, imageUrl: '', isActive: true, modifierGroupIds: [3], trackInventory: true, sortOrder: 1, createdAt: now, updatedAt: now },
-    { categoryId: 5, name: '仙草凍', description: '手工仙草凍', price: 40, imageUrl: '', isActive: true, modifierGroupIds: [3], trackInventory: true, sortOrder: 2, createdAt: now, updatedAt: now },
-    { categoryId: 5, name: '芋圓', description: '手工芋圓', price: 50, imageUrl: '', isActive: true, modifierGroupIds: [3], trackInventory: true, sortOrder: 3, createdAt: now, updatedAt: now },
-  ]);
+  const mappedProducts = generatedProducts.map(p => ({
+    ...p,
+    createdAt: now,
+    updatedAt: now
+  }));
+  await db.products.bulkAdd(mappedProducts as any);
 
   // ==================== 桌位 ====================
   await db.diningTables.bulkAdd([

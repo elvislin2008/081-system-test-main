@@ -23,11 +23,12 @@ export default function OrderHistoryPage() {
   const [restoreInventoryOnDelete, setRestoreInventoryOnDelete] = useState(true);
 
   const orders = useLiveQuery(
-    () => {
+    async () => {
       if (statusFilter === 'all') {
         return db.orders.orderBy('createdAt').reverse().limit(200).toArray();
       }
-      return db.orders.where('status').equals(statusFilter).reverse().sortBy('createdAt');
+      const results = await db.orders.where('status').equals(statusFilter).sortBy('createdAt');
+      return results.reverse();
     },
     [statusFilter]
   );
@@ -47,14 +48,20 @@ export default function OrderHistoryPage() {
 
   const handleExport = async () => {
     try {
-      const allOrders = await db.orders.toArray();
-      if (!allOrders.length) {
+      let exportOrders: Order[];
+      if (statusFilter === 'all') {
+        exportOrders = await db.orders.orderBy('createdAt').reverse().toArray();
+      } else {
+        const results = await db.orders.where('status').equals(statusFilter).sortBy('createdAt');
+        exportOrders = results.reverse();
+      }
+      if (!exportOrders.length) {
         toast.error('無訂單可供匯出');
         return;
       }
 
       // Prepare data for Excel
-      const data = allOrders.map(order => ({
+      const data = exportOrders.map(order => ({
         '單號': order.orderNumber,
         '桌位': order.tableName,
         '狀態': ORDER_STATUS_LABELS[order.status],
@@ -92,10 +99,11 @@ export default function OrderHistoryPage() {
       XLSX.utils.book_append_sheet(wb, ws, '訂單記錄');
 
       // Export file
-      const fileName = `orders_${new Date().toISOString().split('T')[0]}.xlsx`;
+      const filterSuffix = statusFilter === 'all' ? '' : `_${statusFilter}`;
+      const fileName = `orders${filterSuffix}_${new Date().toISOString().split('T')[0]}.xlsx`;
       XLSX.writeFileXLSX(wb, fileName);
-      
-      toast.success('訂單匯出成功 (.xlsx)');
+
+      toast.success(`訂單匯出成功 (${exportOrders.length} 筆)`);
     } catch (error) {
       console.error('Export error:', error);
       toast.error('匯出失敗，請稍後再試');
